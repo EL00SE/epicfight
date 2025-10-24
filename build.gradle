@@ -157,6 +157,10 @@ publishing {
     }
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
+tasks.withType(Jar) {
+    // Set a custom jar name
+    archiveBaseName.set("epicfight-patched")   // base name
+    archiveVersion.set("1.18.2")               // optional: version
+    archiveClassifier.set("")                  // removes -plain or -all suffix
 }
+
