@@ -30,105 +30,120 @@ import yesman.epicfight.world.entity.eventlistener.PlayerEventListener;
 import yesman.epicfight.world.entity.eventlistener.PlayerEventListener.EventType;
 
 public class SteelWhirlwindSkill extends WeaponInnateSkill implements ChargeableSkill {
-	private static final SkillDataKey<Integer> CHARGING_POWER = SkillDataKey.createDataKey(SkillDataManager.ValueType.INTEGER, true);
-	private static final UUID EVENT_UUID = UUID.fromString("d2d057cc-f30f-11ed-a05b-0242ac120003");
-	
-	public static int getChargingPower(SkillContainer skillContainer) {
-		return skillContainer.getDataManager().getDataValue(CHARGING_POWER);
-	}
-	
-	private StaticAnimation chargingAnimation;
-	private StaticAnimation attackAnimation;
-	
-	public SteelWhirlwindSkill(Builder<? extends Skill> builder) {
-		super(builder);
-		
-		this.chargingAnimation = Animations.STEEL_WHIRLWIND_CHARGING;
-		this.attackAnimation = Animations.STEEL_WHIRLWIND;
-	}
-	
-	@Override
-	public void onInitiate(SkillContainer container) {
-		container.getDataManager().registerData(CHARGING_POWER);
-		
-		PlayerEventListener listener = container.getExecuter().getEventListener();
-		
-		listener.addEventListener(EventType.MOVEMENT_INPUT_EVENT, EVENT_UUID, (event) -> {
-			if (event.getPlayerPatch().isChargingSkill(this)) {
-				LocalPlayer clientPlayer = event.getPlayerPatch().getOriginal();
-				clientPlayer.setSprinting(false);
-				clientPlayer.sprintTriggerTime = -1;
-				Minecraft mc = Minecraft.getInstance();
-				ClientEngine.getInstance().controllEngine.setKeyBind(mc.options.keySprint, false);
-				
-				event.getMovementInput().forwardImpulse *= 1.0F - 0.8F * event.getPlayerPatch().getSkillChargingTicks() / 30.0F;
-			}
-		});
-	}
-	
-	@Override
-	public void onRemoved(SkillContainer container) {
-		super.onRemoved(container);
-		
-		container.getExecuter().getEventListener().removeListener(EventType.MOVEMENT_INPUT_EVENT, EVENT_UUID);
-	}
-	
-	@Override
-	public WeaponInnateSkill registerPropertiesToAnimation() {
-		AttackAnimation anim = (AttackAnimation)this.attackAnimation;
-		
-		for (Phase phase : anim.phases) {
-			phase.addProperties(this.properties.get(0).entrySet());
-		}
-		
-		return this;
-	}
-	
-	@Override
-	public int getAllowedMaxChargingTicks() {
-		return 60;
-	}
-	
-	@Override
-	public int getMaxChargingTicks() {
-		return 30;
-	}
-	
-	@Override
-	public int getMinChargingTicks() {
-		return 6;
-	}
-	
-	@Override
-	public void startCharging(PlayerPatch<?> caster) {
-		caster.playAnimationSynchronized(this.chargingAnimation, 0.0F);
-	}
-	
-	@Override
-	public void resetCharging(PlayerPatch<?> caster) {
-	}
-	
-	@Override
-	public void castSkill(ServerPlayerPatch caster, SkillContainer skillContainer, int chargingTicks, SPSkillExecutionFeedback feedbackPacket, boolean onMaxTick) {
-		caster.getSkill(this).getDataManager().setDataSync(CHARGING_POWER, chargingTicks, caster.getOriginal());
-		caster.playAnimationSynchronized(this.attackAnimation, 0.0F);
-		this.cancelOnServer(caster, null);
-	}
-	
-	@Override
-	public KeyMapping getKeyMapping() {
-		return EpicFightKeyMappings.WEAPON_INNATE_SKILL;
-	}
-	
-	@Override
-	public void gatherChargingArguemtns(LocalPlayerPatch caster, ControllEngine controllEngine, FriendlyByteBuf buffer) {
-	}
-	
-	@Override
-	public List<Component> getTooltipOnItem(ItemStack itemStack, CapabilityItem cap, PlayerPatch<?> playerCap) {
-		List<Component> list = super.getTooltipOnItem(itemStack, cap, playerCap);
-		this.generateTooltipforPhase(list, itemStack, cap, playerCap, this.properties.get(0), "Each Strike:");
-		
-		return list;
-	}
+    private static final SkillDataKey<Integer> CHARGING_POWER = SkillDataKey.createDataKey(SkillDataManager.ValueType.INTEGER, true);
+    private static final UUID EVENT_UUID = UUID.fromString("d2d057cc-f30f-11ed-a05b-0242ac120003");
+
+    public static int getChargingPower(SkillContainer skillContainer) {
+        return skillContainer.getDataManager().getDataValue(CHARGING_POWER);
+    }
+
+    private StaticAnimation chargingAnimation;
+    private StaticAnimation attackAnimation;
+
+    public SteelWhirlwindSkill(Builder<? extends Skill> builder) {
+        super(builder);
+
+        this.chargingAnimation = Animations.STEEL_WHIRLWIND_CHARGING;
+        this.attackAnimation = Animations.STEEL_WHIRLWIND;
+    }
+
+    @Override
+    public void onInitiate(SkillContainer container) {
+        container.getDataManager().registerData(CHARGING_POWER);
+
+        PlayerEventListener listener = container.getExecuter().getEventListener();
+
+        listener.addEventListener(EventType.MOVEMENT_INPUT_EVENT, EVENT_UUID, (event) -> {
+            if (event.getPlayerPatch().isChargingSkill(this)) {
+
+                // Guard: only run this client-side
+                if (event.getPlayerPatch() instanceof LocalPlayerPatch) {
+                    LocalPlayer clientPlayer = ((LocalPlayerPatch) event.getPlayerPatch()).getOriginal();
+                    if (clientPlayer != null) {
+                        clientPlayer.setSprinting(false);
+                        clientPlayer.sprintTriggerTime = -1;
+
+                        Minecraft mc = Minecraft.getInstance();
+                        if (mc != null && mc.options != null && mc.options.keySprint != null) {
+                            ClientEngine.getInstance().controllEngine.setKeyBind(mc.options.keySprint, false);
+                        }
+
+                        event.getMovementInput().forwardImpulse *= 1.0F - 0.8F * event.getPlayerPatch().getSkillChargingTicks() / 30.0F;
+                    }
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onRemoved(SkillContainer container) {
+        super.onRemoved(container);
+
+        container.getExecuter().getEventListener().removeListener(EventType.MOVEMENT_INPUT_EVENT, EVENT_UUID);
+    }
+
+    @Override
+    public WeaponInnateSkill registerPropertiesToAnimation() {
+        AttackAnimation anim = (AttackAnimation) this.attackAnimation;
+
+        for (Phase phase : anim.phases) {
+            phase.addProperties(this.properties.get(0).entrySet());
+        }
+
+        return this;
+    }
+
+    @Override
+    public int getAllowedMaxChargingTicks() {
+        return 60;
+    }
+
+    @Override
+    public int getMaxChargingTicks() {
+        return 30;
+    }
+
+    @Override
+    public int getMinChargingTicks() {
+        return 6;
+    }
+
+    @Override
+    public void startCharging(PlayerPatch<?> caster) {
+        if (caster != null) {
+            caster.playAnimationSynchronized(this.chargingAnimation, 0.0F);
+        }
+    }
+
+    @Override
+    public void resetCharging(PlayerPatch<?> caster) {
+    }
+
+    @Override
+    public void castSkill(ServerPlayerPatch caster, SkillContainer skillContainer, int chargingTicks,
+            SPSkillExecutionFeedback feedbackPacket, boolean onMaxTick) {
+
+        if (caster != null && skillContainer != null) {
+            caster.getSkill(this).getDataManager().setDataSync(CHARGING_POWER, chargingTicks, caster.getOriginal());
+            caster.playAnimationSynchronized(this.attackAnimation, 0.0F);
+            this.cancelOnServer(caster, null);
+        }
+    }
+
+    @Override
+    public KeyMapping getKeyMapping() {
+        return EpicFightKeyMappings.WEAPON_INNATE_SKILL;
+    }
+
+    @Override
+    public void gatherChargingArguemtns(LocalPlayerPatch caster, ControllEngine controllEngine, FriendlyByteBuf buffer) {
+    }
+
+    @Override
+    public List<Component> getTooltipOnItem(ItemStack itemStack, CapabilityItem cap, PlayerPatch<?> playerCap) {
+        List<Component> list = super.getTooltipOnItem(itemStack, cap, playerCap);
+        this.generateTooltipforPhase(list, itemStack, cap, playerCap, this.properties.get(0), "Each Strike:");
+
+        return list;
+    }
 }
