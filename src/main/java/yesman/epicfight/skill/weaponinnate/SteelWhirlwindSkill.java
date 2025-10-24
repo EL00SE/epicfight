@@ -56,7 +56,7 @@ public class SteelWhirlwindSkill extends WeaponInnateSkill implements Chargeable
         listener.addEventListener(EventType.MOVEMENT_INPUT_EVENT, EVENT_UUID, (event) -> {
             if (event.getPlayerPatch().isChargingSkill(this)) {
 
-                // Guard: only run this client-side
+                // Only run client-side code for LocalPlayerPatch
                 if (event.getPlayerPatch() instanceof LocalPlayerPatch) {
                     LocalPlayer clientPlayer = ((LocalPlayerPatch) event.getPlayerPatch()).getOriginal();
                     if (clientPlayer != null) {
@@ -78,7 +78,6 @@ public class SteelWhirlwindSkill extends WeaponInnateSkill implements Chargeable
     @Override
     public void onRemoved(SkillContainer container) {
         super.onRemoved(container);
-
         container.getExecuter().getEventListener().removeListener(EventType.MOVEMENT_INPUT_EVENT, EVENT_UUID);
     }
 
@@ -110,7 +109,8 @@ public class SteelWhirlwindSkill extends WeaponInnateSkill implements Chargeable
 
     @Override
     public void startCharging(PlayerPatch<?> caster) {
-        if (caster != null) {
+        // Only play client-side animations
+        if (caster instanceof LocalPlayerPatch) {
             caster.playAnimationSynchronized(this.chargingAnimation, 0.0F);
         }
     }
@@ -125,11 +125,16 @@ public class SteelWhirlwindSkill extends WeaponInnateSkill implements Chargeable
 
         if (caster != null && skillContainer != null) {
             caster.getSkill(this).getDataManager().setDataSync(CHARGING_POWER, chargingTicks, caster.getOriginal());
-            caster.playAnimationSynchronized(this.attackAnimation, 0.0F);
+
+            // Only play attack animation on client
+            if (caster instanceof LocalPlayerPatch) {
+                caster.playAnimationSynchronized(this.attackAnimation, 0.0F);
+            }
+
             this.cancelOnServer(caster, null);
         }
     }
-
+	//maybe
     @Override
     public KeyMapping getKeyMapping() {
         return EpicFightKeyMappings.WEAPON_INNATE_SKILL;
@@ -143,7 +148,6 @@ public class SteelWhirlwindSkill extends WeaponInnateSkill implements Chargeable
     public List<Component> getTooltipOnItem(ItemStack itemStack, CapabilityItem cap, PlayerPatch<?> playerCap) {
         List<Component> list = super.getTooltipOnItem(itemStack, cap, playerCap);
         this.generateTooltipforPhase(list, itemStack, cap, playerCap, this.properties.get(0), "Each Strike:");
-
         return list;
     }
 }
